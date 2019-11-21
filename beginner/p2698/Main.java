@@ -1,8 +1,9 @@
 package beginner.p2698;
 
-import java.io.DataInputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.Scanner;
 
 /**
  * @author: Mohammed Julfikar Ali Mahbub, 18301264, CSE Dept, BRAC University, Mohakhali Campus, Dhaka, Bangladesh
@@ -11,174 +12,181 @@ import java.io.IOException;
  */
 public class Main {
 
-    public static int[] col, key;
-
     public static void main(String[] args) throws IOException {
-        int l, c, n, p, x, a, b, s, m1, m2;
-        Reader sc = new Reader();
+        int l, c, n, p, x;
+        long a, b, s, m1, m2;
+        Scanner sc = new Scanner(System.in);
+//        sc = new Scanner(new java.io.File(System.getProperty("user.dir") + "/src/beginner/p2698/input.txt"));
 
         l = sc.nextInt();
         c = sc.nextInt();
         n = sc.nextInt();
-        col = new int[l];
-        key = new int[c + 1];
-        key[0] = l;
+
+        SegmentTree tree = new SegmentTree(l);
 
         for (int i = 0; i < n; i++) {
-            p = sc.nextInt() - 1;
-            x = sc.nextInt() - 1;
-            a = sc.nextInt();
-            b = sc.nextInt();
+            p = sc.nextInt();
+            x = sc.nextInt();
+            a = sc.nextLong();
+            b = sc.nextLong();
 
-            s = key[p];
-//            print(key);
-//            System.out.println(s);
+            s = tree.count(p);
+
             m1 = (a % l + ((s % l) * (s % l)) % l) % l;
             m2 = (a % l + ((s % l + b % l) * (s % l + b % l) % l)) % l;
-//            System.out.println("M1: " + m1 + ", M2: " + m2);
-            
-            for (int j = Math.min(m1, m2), k = Math.max(m1, m2); j <= k; j++) {
-                key[col[j]]--;
-                col[j] = x;
-            }
-            key[x] += Math.abs(m1 - m2) + 1;
-//        print(key);
+
+            tree.update((int) Math.min(m1, m2), (int) Math.max(m1, m2), x);
         }
-//        print(key);
-        System.out.println(countMax());
-    }
-
-    public static void print(int[] a) {
-        System.out.println(java.util.Arrays.toString(a));
-    }
-
-    public static int countMax() {
-        int max = key[0];
-        for (int i = 1; i < key.length; i++) {
-            if (key[i] > max) {
-                max = key[i];
-            }
+        int max = 0;
+        for (int i = 1; i <= c; i++) {
+            max = Math.max(max, tree.count(i));
         }
-
-        return max;
+        System.out.println(max);
     }
 }
 
-class Reader {
+class SegmentTree {
 
-    final private int BUFFER_SIZE = 1 << 16;
-    private DataInputStream din;
-    private byte[] buffer;
-    private int bufferPointer, bytesRead;
+    Node root;
+    public int level, length;
 
-    public Reader() {
-        din = new DataInputStream(System.in);
-        buffer = new byte[BUFFER_SIZE];
-        bufferPointer = bytesRead = 0;
+    public SegmentTree(int n) {
+        length = n - 1;
+        Queue<Node> queue = new LinkedList<Node>();
+        while (n-- > 0) {
+            queue.offer(new Node(1, 1, 1, 0, level));
+        }
+
+        while (queue.size() > 1) {
+            level++;
+            queue = build(queue);
+        }
+        root = queue.peek();
     }
 
-    public Reader(String file_name) throws IOException {
-        din = new DataInputStream(new FileInputStream(file_name));
-        buffer = new byte[BUFFER_SIZE];
-        bufferPointer = bytesRead = 0;
-    }
-
-    public String readLine() throws IOException {
-        byte[] buf = new byte[64]; // line length 
-        int cnt = 0, c;
-        while ((c = read()) != -1) {
-            if (c == '\n') {
-                break;
+    public Queue<Node> build(Queue<Node> source) {
+        Queue<Node> queue = new LinkedList<Node>();
+        while (!source.isEmpty()) {
+            Node child = new Node(source.poll(), source.poll(), level);
+            if (child.left != null) {
+                child.leftQuantity = child.left.leftQuantity + child.left.rightQuantity;
             }
-            buf[cnt++] = (byte) c;
-        }
-        return new String(buf, 0, cnt);
-    }
-
-    public int nextInt() throws IOException {
-        int ret = 0;
-        byte c = read();
-        while (c <= ' ') {
-            c = read();
-        }
-        boolean neg = (c == '-');
-        if (neg) {
-            c = read();
-        }
-        do {
-            ret = ret * 10 + c - '0';
-        } while ((c = read()) >= '0' && c <= '9');
-
-        if (neg) {
-            return -ret;
-        }
-        return ret;
-    }
-
-    public long nextLong() throws IOException {
-        long ret = 0;
-        byte c = read();
-        while (c <= ' ') {
-            c = read();
-        }
-        boolean neg = (c == '-');
-        if (neg) {
-            c = read();
-        }
-        do {
-            ret = ret * 10 + c - '0';
-        } while ((c = read()) >= '0' && c <= '9');
-        if (neg) {
-            return -ret;
-        }
-        return ret;
-    }
-
-    public double nextDouble() throws IOException {
-        double ret = 0, div = 1;
-        byte c = read();
-        while (c <= ' ') {
-            c = read();
-        }
-        boolean neg = (c == '-');
-        if (neg) {
-            c = read();
-        }
-
-        do {
-            ret = ret * 10 + c - '0';
-        } while ((c = read()) >= '0' && c <= '9');
-
-        if (c == '.') {
-            while ((c = read()) >= '0' && c <= '9') {
-                ret += (c - '0') / (div *= 10);
+            if (child.right != null) {
+                child.rightQuantity = child.right.leftQuantity + child.right.rightQuantity;
             }
+            queue.offer(child);
         }
-
-        if (neg) {
-            return -ret;
-        }
-        return ret;
+        return queue;
     }
 
-    private void fillBuffer() throws IOException {
-        bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-        if (bytesRead == -1) {
-            buffer[0] = -1;
-        }
+    public int count(int color) {
+        return count(root, color);
     }
 
-    private byte read() throws IOException {
-        if (bufferPointer == bytesRead) {
-            fillBuffer();
+    public int count(Node root, int color) {
+        if (root == null) {
+            return 0;
         }
-        return buffer[bufferPointer++];
+
+        int cnt = 0;
+        if (root.leftQuantity > 0) {
+            if (root.leftColor == color) {
+                cnt += root.leftQuantity;
+            }
+        } else {
+            cnt += count(root.left, color);
+        }
+        if (root.rightQuantity > 0) {
+            if (root.rightColor == color) {
+                cnt += root.rightQuantity;
+            }
+        } else {
+            cnt += count(root.right, color);
+        }
+
+        return cnt;
     }
 
-    public void close() throws IOException {
-        if (din == null) {
+    public void update(int start, int end, int color) {
+        update(0, length, start, end, color, root);
+    }
+
+    public void update(int left, int right, int start, int end, int color, Node root) {
+        if (root == null) {
             return;
         }
-        din.close();
+        int range = (int) Math.pow(2, root.level - 1);
+        if (start == left && end == right) {
+            // complete overlap
+            root.leftColor = root.rightColor = color;
+            root.leftQuantity = Math.abs(root.leftQuantity);
+            root.rightQuantity = Math.abs(root.rightQuantity);
+            return;
+        }
+
+        if (start < left + range) {
+            if (!(root.leftColor == color && root.leftQuantity > 0)) {
+                if (root.leftQuantity > 0 && root.left != null) {
+                    root.left.leftColor = root.left.rightColor = root.leftColor;
+                    root.left.leftQuantity = Math.abs(root.left.leftQuantity);
+                    root.left.rightQuantity = Math.abs(root.left.rightQuantity);
+                }
+                update(left, left + range - 1, start, Math.min(end, left + range - 1), color, root.left);
+                if (root.left != null) {
+                    if (root.left.leftColor == root.left.rightColor && root.left.leftQuantity >= 0 && root.left.rightQuantity >= 0) {
+                        root.leftColor = root.left.leftColor;
+                        root.leftQuantity = Math.abs(root.leftQuantity);
+                    } else {
+                        root.leftQuantity = -Math.abs(root.leftQuantity);
+                    }
+                }
+            }
+        }
+
+        if (end >= left + range) {
+            if (!(root.rightColor == color && root.rightQuantity > 0)) {
+                if (root.rightQuantity > 0 && root.right != null) {
+                    root.right.leftColor = root.right.rightColor = root.rightColor;
+                    root.right.leftQuantity = Math.abs(root.right.leftQuantity);
+                    root.right.rightQuantity = Math.abs(root.right.rightQuantity);
+                }
+                update(left + range, right, Math.max(left + range, start), end, color, root.right);
+                if (root.right != null) {
+                    if (root.right.leftColor == root.right.rightColor && root.right.leftQuantity >= 0 && root.right.rightQuantity >= 0) {
+                        root.rightColor = root.right.leftColor;
+                        root.rightQuantity = Math.abs(root.rightQuantity);
+                    } else {
+                        root.rightQuantity = -Math.abs(root.rightQuantity);
+                    }
+                }
+            }
+        }
+    }
+}
+
+class Node {
+
+    public static int totalNodes;
+    int id, level, leftColor = 1, leftQuantity = 1, rightColor = 1, rightQuantity = 0;
+    Node left, right;
+
+    public Node(int lc, int lq, int rc, int rq, int level) {
+        this.id = totalNodes++;
+        leftColor = lc;
+        leftQuantity = lq;
+        rightColor = rc;
+        rightQuantity = rq;
+        this.level = level;
+    }
+
+    public Node(Node left, Node right, int level) {
+        this.id = totalNodes++;
+        this.left = left;
+        this.right = right;
+        this.level = level;
+    }
+
+    public String toString() {
+        return String.format("%d: {%d, %d, %d, %d} :%d", id, leftColor, leftQuantity, rightColor, rightQuantity, level);
     }
 }
